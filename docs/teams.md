@@ -53,7 +53,7 @@ template**: a base `langgraph-config.yaml` with three sentinels filled in per sp
 |---|---|
 | `{{REPO}}` | the `repo` argument — the repo this team's board manages |
 | `{{TEAM_NAME}}` | the `name` argument |
-| `{{GATE}}` | the `gate` argument — the pre-PR check command (empty = none) |
+| `{{GATE}}` | the `gate` argument — the pre-PR check command (empty **auto-detects** one from the repo's build files — `ruff check . && ruff format --check .` for Python, `npm ci && npm run docs:build` for a VitePress site, `npm ci && npm test` for any other Node project; truly empty only when none of those match) |
 
 The bundle's default template (from the `portfolio` plugin's
 [`examples/team-template`](https://github.com/protoLabsAI/portfolio-plugin/tree/main/examples/team-template))
@@ -72,8 +72,8 @@ portfolio:
   team_template: /path/to/your/team-template   # a langgraph-config.yaml (+ secrets.yaml)
 ```
 
-or configure named **archetypes** — repo/gate presets so spinning up a standing team is
-one word instead of a full path each time:
+or configure named **archetypes** — repo/gate (+ template) presets for a repo you spin
+up often, so it's one word instead of a full path each time:
 
 ```yaml
 portfolio:
@@ -85,6 +85,12 @@ portfolio:
 ```
 portfolio_spinup_team(name="protolibrary-team", archetype="protolibrary")
 ```
+
+An archetype only presets *what* gets built (repo/gate/template) — it says nothing
+about lifecycle. `portfolio_spinup_team` still defaults to `auto_dispose=True`, so an
+archetype-spun team is torn down by `portfolio_autodispose()` exactly like an ad hoc one
+the moment its board drains. For a repo you want to keep as a **standing** team, pass
+`auto_dispose=False` explicitly (see the worked example below).
 
 A template is also where you extend the coding roster: add another ACP delegate (e.g. a
 `claude` entry alongside `proto`) to the template's `delegates:` list and reference it in
@@ -163,11 +169,14 @@ portfolio:
 Restart, then:
 
 ```
-portfolio_spinup_team(name="api-team", archetype="api")
+portfolio_spinup_team(name="api-team", archetype="api", auto_dispose=False)
   → clones your template, binds ~/dev/my-api, boots the team, registers "api-team" as a board
 
-portfolio_spinup_team(name="docs-team", archetype="docs")
+portfolio_spinup_team(name="docs-team", archetype="docs", auto_dispose=False)
   → same, for ~/dev/my-docs
+
+# auto_dispose=False on both — these are STANDING teams for repos you work often, not
+# one-shot spawns. Leave it at its default (True) for a finite project's team instead.
 
 portfolio_dispatch(board="api-team", title="Add rate-limit headers to /v2",
                     spec="Return X-RateLimit-* headers on every /v2 response.",
@@ -177,11 +186,15 @@ portfolio_dispatch(board="api-team", title="Add rate-limit headers to /v2",
     opens a PR, and ships it through `make check`
 
 portfolio_rollup()
-  → { "api-team": {ready: 0, in_progress: 1, ...}, "docs-team": {...} }
+  → [ {"board": "api-team",  "total": 5, "counts": {"ready": 1, "in_progress": 1, "done": 3},
+       "blocked": [], "critical_path": []},
+      {"board": "docs-team", "total": 2, "counts": {"done": 2}, "blocked": [], "critical_path": []} ]
+  # bounded lane counts (counts) + only the blocked/foundation items — never every feature
 
 portfolio_autodispose()
-  → leaves both alone — they're standing archetypes, not ephemeral spawns; use
-    portfolio_teardown_team(name) if you want one gone regardless
+  → leaves both alone — auto_dispose=False means they're never a candidate, regardless
+    of how drained their board is; use portfolio_teardown_team(name) if you want one
+    gone anyway
 ```
 
 ## Further reading
