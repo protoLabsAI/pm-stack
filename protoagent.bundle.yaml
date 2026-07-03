@@ -9,10 +9,13 @@
 # rolls up + diffs + sequences cross-board dependencies, and disposes a team once its
 # board drains. It does NOT run a board itself — that's the team tier.
 #
-# So this bundle ENABLES the manager tier (delegates + portfolio) but INSTALLS the
-# team tier too (project_board + agent_browser, off by default): a spawned team's
-# plugins.dir defaults to THIS host's plugins dir, so the team discovers project_board
-# here without a per-team reinstall. Install once, provision many teams.
+# So this bundle ENABLES the manager tier (delegates + portfolio + github) but
+# INSTALLS the team tier too (project_board + agent_browser, off by default): a
+# spawned team's plugins.dir defaults to THIS host's plugins dir, so the team
+# discovers project_board here without a per-team reinstall. Install once, provision
+# many teams. github is enabled at the MANAGER tier itself — filing/triaging issues
+# is portfolio-manager work (surfacing what a team can't unblock, tracking cross-repo
+# asks), not something only a coding team needs.
 #
 # PIN LIFECYCLE (ADR 0049): pins are release TAGS and only move through a passing
 # verify — .github/workflows/verify-bundle.yml installs this manifest into a scratch
@@ -27,10 +30,10 @@ description: >-
   dispatches features to each team's board over A2A, rolls up a bounded cross-board
   view, watches for changes, sequences cross-board dependencies, and disposes a team
   once its board drains. It runs no board of its own — the project-team counterpart is
-  the Lead Engineer bundle. Enables the manager spine (delegates + portfolio) and
-  carries the team plugins (project_board + agent_browser, installed but off) so the
-  teams it spawns discover them on this host. The portfolio→team split of the old
-  pm-stack.
+  the Lead Engineer bundle. Enables the manager spine (delegates + portfolio + github,
+  the last for filing/triaging issues) and carries the team plugins (project_board +
+  agent_browser, installed but off) so the teams it spawns discover them on this host.
+  The portfolio→team split of the old pm-stack.
 
 # The core version this exact pin set was last verified against (ADR 0049). The verify
 # workflow checks out this protoAgent ref for the smoke — bump on re-verify.
@@ -39,13 +42,14 @@ verified_against: 0.81.0
 plugins:
   - { id: delegates, builtin: true }                                                  # ACP/A2A spawn spine — ships with protoAgent
   - { id: portfolio,     url: https://github.com/protoLabsAI/portfolio-plugin,     ref: v0.14.7 }   # orchestrate + spawn teams
+  - { id: github,        url: https://github.com/protoLabsAI/github-plugin,       ref: v0.1.3 }   # file/triage issues + PRs across repos
   - { id: project_board, url: https://github.com/protoLabsAI/projectBoard-plugin,  ref: v0.25.0 }  # installed-not-enabled: spawned teams' board
   - { id: agent_browser, url: https://github.com/protoLabsAI/agent-browser-plugin, ref: v0.5.1 }   # installed-not-enabled: spawned teams' browser
 
-# The PM runs the MANAGER tier only. project_board + agent_browser stay installed-but-off
-# here — they're for the Lead Engineer teams this PM spawns (which discover them via this
-# host's plugins dir), not for the PM itself.
-enabled: [delegates, portfolio]
+# The PM runs the MANAGER tier: delegates + portfolio + github. project_board +
+# agent_browser stay installed-but-off here — they're for the Lead Engineer teams this
+# PM spawns (which discover them via this host's plugins dir), not for the PM itself.
+enabled: [delegates, portfolio, github]
 config:
   portfolio:
     # The base team config portfolio_spinup_team clones per project. EMPTY IS THE HAPPY PATH
@@ -54,6 +58,14 @@ config:
     # Only point this at a creds-filled copy for a team on a DIFFERENT gateway than the PM's.
     # {{REPO}} / {{TEAM_NAME}} / {{GATE}} are filled per spawn.
     team_template: ""
+  github:
+    # github-plugin ships `write: false` by default (its own operator-trust gate) — this
+    # bundle opts IN at the manager tier: a PM's job includes filing issues (an unblockable
+    # dependency, a cross-repo ask) and triaging (commenting/labeling), not just reading.
+    # Merge itself stays confirm-guarded by the plugin regardless of this setting.
+    write: true
+    # No default_repo/repos here — those are operator/instance config (which repos THIS
+    # PM watches), not a bundle-wide default. Set them in your own langgraph-config.yaml.
 
 # Agent archetype (ADR 0042) — presents this bundle as a "Portfolio Manager" agent type
 # in the new-agent picker, with a starting persona. Additive metadata.
@@ -78,6 +90,10 @@ archetype:
       `portfolio_diff` surfaces (merged / blocked / unblocked / new).
     - Dispose a finite project's team when its board drains — `portfolio_autodispose`
       (or `portfolio_teardown_team`). Standing teams you keep.
+    - File and triage GitHub issues for anything a team can't resolve itself — an
+      external dependency, a cross-repo ask, a bug that needs a human's call. Comment/
+      label to keep them current as work moves; that's portfolio-manager work, not a
+      team's.
 
     Think in terms of OUTCOMES across the portfolio, not individual diffs. Keep each
     team's brief small and shippable, watch the rollup, unblock what's stuck, and report
