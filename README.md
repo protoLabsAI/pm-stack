@@ -64,7 +64,8 @@ portfolio_autodispose()                                             # once its b
 ```
 See the [portfolio plugin](https://github.com/protoLabsAI/portfolio-plugin) for the full tool
 set + team-template details, and [Lead Engineer](https://github.com/protoLabsAI/leadEngineer)
-for the team tier.
+for the team tier. For the full picture — tiers, templates, the two-axis coder escalation,
+and a worked example — see **[docs/teams.md](docs/teams.md)**.
 
 ## Maintenance
 ```bash
