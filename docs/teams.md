@@ -109,18 +109,22 @@ independent axes** when a shot stalls, and they compose rather than compete:
 ```yaml
 project_board:
   coders:
-    fast: proto          # first attempt
-    smart: proto         # climbs here on a capability failure
-    reasoning: proto     # then here
-    # opus: claude       # add another ACP agent as the top rung
+    smart: proto        # entry tier for small (and, by default, unrated) features
+    reasoning: proto    # climbs here on a capability failure — also the entry tier
+                         # for medium/large features
+    # opus: claude       # add another ACP agent as the top rung — also the entry
+                         # tier for architectural features
 ```
 
-A **capability failure** (no diff produced, or a timeout — *did the agent do anything
-at all?*) climbs the ladder one rung (`fast → smart → reasoning → …`) and blocks at the
-top if the last rung also fails. Transient failures (rate-limit, a merge conflict) retry
-the *same* tier with backoff instead of climbing — a bigger model doesn't fix a flaky
-network call. This ladder is throwing progressively bigger brains at the same shot; it
-ships today in `project_board`.
+A feature's **initial** tier isn't always the bottom rung — it's chosen from the
+feature's `difficulty` (`small`/`medium`/`large`/`architectural`), defaulting to
+`smart` when difficulty isn't set. From wherever it starts, a **capability failure**
+(no diff produced, or a timeout — *did the agent do anything at all?*) climbs the
+ladder one rung (`smart → reasoning → opus`) and blocks at the top if the last rung
+also fails. Transient failures (rate-limit, a merge conflict) retry the *same* tier
+with backoff instead of climbing — a bigger model doesn't fix a flaky network call.
+This ladder is throwing progressively bigger brains at the same shot; it ships today
+in `project_board`.
 
 ### Axis 2 — execution-grounded search (landing per ADR 0064)
 
