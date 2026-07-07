@@ -37,7 +37,7 @@ description: >-
 
 # The core version this exact pin set was last verified against (ADR 0049). The verify
 # workflow checks out this protoAgent ref for the smoke — bump on re-verify.
-verified_against: 0.94.0
+verified_against: 0.95.1
 
 plugins:
   - { id: delegates, builtin: true }                                                  # ACP/A2A spawn spine — ships with protoAgent
