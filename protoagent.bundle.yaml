@@ -42,8 +42,8 @@ verified_against: 0.95.1
 plugins:
   - { id: delegates, builtin: true }                                                  # ACP/A2A spawn spine — ships with protoAgent
   - { id: portfolio,     url: https://github.com/protoLabsAI/portfolio-plugin,     ref: v0.16.0 }   # orchestrate + spawn teams
-  - { id: github,        url: https://github.com/protoLabsAI/github-plugin,       ref: v0.1.3 }   # file/triage issues + PRs across repos
-  - { id: project_board, url: https://github.com/protoLabsAI/projectBoard-plugin,  ref: v0.32.0 }  # installed-not-enabled: spawned teams' board
+  - { id: github,        url: https://github.com/protoLabsAI/github-plugin,       ref: v0.3.0 }   # file/triage issues + PRs across repos
+  - { id: project_board, url: https://github.com/protoLabsAI/projectBoard-plugin,  ref: v0.35.0 }  # installed-not-enabled: spawned teams' board
   - { id: agent_browser, url: https://github.com/protoLabsAI/agent-browser-plugin, ref: v0.5.1 }   # installed-not-enabled: spawned teams' browser
 
 # The PM runs the MANAGER tier: delegates + portfolio + github. project_board +
