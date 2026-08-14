@@ -1,11 +1,22 @@
-# Bundle verify-and-bump loop (ADR 0049) — from protoAgent's
-# examples/bundles/template/. Two jobs:
+# Bundle verify-and-bump loop (ADR 0049). Copy into your bundle repo's
+# .github/workflows/ — under examples/ in protoAgent this file is inert.
+#
+# Two jobs:
 #   verify — installs THIS manifest's pin set into a scratch agent on a fresh
 #            protoAgent checkout and probes every declared console view. Runs on
 #            every PR (so a pin-bump must prove itself), on demand, and weekly
 #            (so a rotted pin set turns the schedule red instead of rotting silently).
 #   bump   — (schedule/dispatch only) checks each tag-pinned member for a newer
-#            release tag and opens a PR with the bump; that PR then runs `verify`.
+#            release tag and opens/updates a PR with the bump; that PR then runs
+#            `verify`. But a PR opened with the repository GITHUB_TOKEN never
+#            auto-starts a `pull_request` run — GitHub holds it `action_required`
+#            until a maintainer approves it (see README.md "Pin-bump PR lifecycle",
+#            #2645). So this job (a) reuses ONE branch/PR per stack instead of
+#            piling up duplicates every week, and (b) fails loudly — PR comment +
+#            label + a red job — if the run it just pushed doesn't show up started
+#            within a bounded wait, so an unapproved candidate reads as a
+#            maintenance failure instead of quietly rotting.
+
 name: verify-bundle
 
 on:
@@ -17,10 +28,12 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  issues: write # labeling the pin-bump PR (`gh pr edit --add-label`) rides the issues API
+  actions: read # `gh run list`, to detect the approval-required stall below
 
 jobs:
   verify:
-    runs-on: namespace-profile-protolabs-linux
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -43,7 +56,7 @@ jobs:
 
   bump:
     if: github.event_name != 'pull_request'
-    runs-on: namespace-profile-protolabs-linux
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -53,15 +66,41 @@ jobs:
           python3 scripts/check_bundle_updates.py protoagent.bundle.yaml | tee /tmp/bumps.txt
           echo "changed=$(git diff --quiet && echo false || echo true)" >> "$GITHUB_OUTPUT"
 
-      - name: Open the pin-bump PR
+      # ONE candidate per stack (#2645): a stable branch name means a later
+      # scheduled run force-pushes and updates the existing open PR instead of
+      # opening a duplicate. One manifest per bundle repo, so "per stack" here is
+      # just "per repo" — see README.md "Pin-bump PR lifecycle" for the full
+      # contract. Treat `bump-pins` as bot-owned: it is rewritten wholesale every
+      # run, so hand edits to it don't survive the next bump. Logic lives in
+      # scripts/bump_pins_pr.sh (#2669) — a real, unit-tested script rather than
+      # inline YAML bash, so a change to this contract has automated coverage
+      # instead of relying on a manual dry-run against a live repo.
+      - name: Open or update the pin-bump PR
+        if: steps.check.outputs.changed == 'true'
+        id: pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash "$GITHUB_WORKSPACE/scripts/bump_pins_pr.sh" open-or-update
+
+      # Make the approval-required stall visible instead of silent (#2645): poll
+      # for the `verify` run this push should have queued. If it comes back
+      # `action_required` (GitHub's recursion guard for GITHUB_TOKEN-authored
+      # PRs) — or never shows up at all within the bounded wait, which is worse —
+      # comment on the PR, label it, and fail this job so an unapproved candidate
+      # turns the weekly schedule red instead of rotting quietly.
+      #
+      # `bump-pins` is a permanently-reused branch (one candidate per stack,
+      # see the step above), so on a repeat run the branch name alone can
+      # match a STALE prior run (already-approved from last week, or a
+      # leftover from a since-closed PR) before GitHub has even registered a
+      # run for the commit just pushed — run creation is async. Filter on the
+      # exact commit SHA (`gh run list -c/--commit`) so the poll can only ever
+      # see the run for THIS push, not whatever last happened to be on top of
+      # the branch's run list.
+      - name: Flag the approval-required verify run
         if: steps.check.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          branch="bump-pins-$(date +%Y%m%d)"
-          git config user.name "bundle-bot"
-          git config user.email "bundle-bot@users.noreply.github.com"
-          git checkout -b "$branch"
-          git commit -am "chore: bump plugin pins to latest release tags"
-          git push origin "$branch"
-          gh pr create --fill --body "$(printf 'Automated pin bump (ADR 0049).\n\n```\n%s\n```\n\nMerging requires the verify job green — the pin only moves through a passing verification.' "$(cat /tmp/bumps.txt)")"
+        run: >
+          bash "$GITHUB_WORKSPACE/scripts/bump_pins_pr.sh" flag-approval
+          "${{ steps.pr.outputs.number }}" "${{ steps.pr.outputs.branch }}" "${{ steps.pr.outputs.sha }}"
