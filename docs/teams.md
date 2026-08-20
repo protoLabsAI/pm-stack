@@ -1,13 +1,13 @@
 # How your Roxy's teams work
 
-Roxy is a **Portfolio Manager** (the `pm-stack` archetype): one agent that orchestrates
+Roxy is a **Portfolio Manager** (the `portfolio-manager-archetype` bundle): one agent that orchestrates
 work across *many* project teams instead of writing code herself. This guide covers how
 those teams come into being, what each one carries, and how a feature climbs from "spec"
 to "merged PR" once she's dispatched it.
 
 ## The two tiers
 
-`pm-stack` stands up the **manager tier** of a two-tier hierarchy (ADR 0055):
+`portfolio-manager-archetype` stands up the **manager tier** of a two-tier hierarchy (ADR 0055):
 
 | Tier | Runs | Board? |
 |---|---|---|
