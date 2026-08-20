@@ -1,7 +1,7 @@
 # Portfolio Manager — a protoAgent plugin bundle
 
 A **bundle** (ADR 0040): a curated, pinned set of plugins you install with one command.
-`pm-stack` stands up a **Portfolio Manager** — the manager-of-teams tier of the
+`portfolio-manager-archetype` stands up a **Portfolio Manager** — the manager-of-teams tier of the
 portfolio→team hierarchy (ADR 0055). It orchestrates work across **many Lead Engineer
 teams**: it spins a team up per project, dispatches features to each team's board over
 A2A, rolls up a bounded cross-board view, sequences cross-board dependencies, and disposes
@@ -20,12 +20,12 @@ bundle (a single repo + its coding agents). This bundle is the manager that dele
 
 ### Why the team plugins are installed but off
 A Portfolio Manager doesn't run a board. But the **Lead Engineer teams it spawns do** —
-and a spawned team's `plugins.dir` defaults to **this host's** plugins dir. So pm-stack
+and a spawned team's `plugins.dir` defaults to **this host's** plugins dir. So this archetype
 installs `project_board` (+ `agent_browser`) here, off by default, and every team the PM
 spins up discovers them on this host without a per-team reinstall. **Install once, provision
 many teams.**
 
-The external plugins are **pinned to release tags** — `pm-stack` is a *tested combo*, not
+The external plugins are **pinned to release tags** — `portfolio-manager-archetype` is a *tested combo*, not
 "whatever's latest." A pin means **"last verified working"** and only moves through a passing
 verification (ADR 0049): CI installs this manifest's pin set into a scratch agent and probes
 every declared console view on each PR + weekly, and a scheduled job opens a pin-bump PR when
@@ -34,7 +34,7 @@ verified on.
 
 ## Install
 ```bash
-python -m server plugin install https://github.com/protoLabsAI/pm-stack
+python -m server plugin install https://github.com/protoLabsAI/portfolio-manager-archetype
 ```
 Install ≠ enable ≠ trust — the installer prints the suggested `plugins.enabled` + config;
 apply them to your `config/langgraph-config.yaml`:
@@ -70,7 +70,7 @@ and a worked example — see **[docs/teams.md](docs/teams.md)**.
 ## Maintenance
 ```bash
 # verify locally (from a protoAgent checkout, deps synced)
-uv run --no-sync python /path/to/pm-stack/scripts/verify_bundle.py /path/to/pm-stack
+uv run --no-sync python /path/to/portfolio-manager-archetype/scripts/verify_bundle.py /path/to/portfolio-manager-archetype
 
 # check members for newer release tags (rewrites refs in place)
 python3 scripts/check_bundle_updates.py protoagent.bundle.yaml

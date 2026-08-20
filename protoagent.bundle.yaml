@@ -22,7 +22,7 @@
 # agent and probes every declared console view (each PR + weekly), and the scheduled
 # bump job opens a PR when a member tags a new release. Keep member entries on ONE
 # line (scripts/check_bundle_updates.py rewrites the `ref:` token in place).
-id: pm-stack
+id: portfolio-manager-archetype
 name: Portfolio Manager
 description: >-
   The manager-of-teams tier (ADR 0055). One agent orchestrates work across MANY Lead
